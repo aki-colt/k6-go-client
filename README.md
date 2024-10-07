@@ -7,7 +7,7 @@ It works like bellow in your project
 ```go
 import (
 	"fmt"
-	k6Cli "github.com/aki-colt/k6-go-client/v1"
+	k6cli "github.com/aki-colt/k6-go-client/v1"
 )
 
 func main() {
