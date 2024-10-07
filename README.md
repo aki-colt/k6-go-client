@@ -1,6 +1,6 @@
 # K6-go-client
 
-**K6-go-client** is a light go library to generate k6 script in js by go code with nearly no dependencies. It accepts go struct and output string of k6 js script.
+**K6-go-client** is a light go package to generate k6 script in js by go code with nearly no dependencies. It accepts go struct and output string of k6 js script.
 
 ## getting started
 It works like bellow in your project
@@ -80,7 +80,12 @@ func main() {
 			},
 		},
 	}
-	log.Print(client.GenScript())
+	res, err := client.GenScript()
+	if err != nil {
+		log.Fatal(err.Error())
+	} else {
+		log.Print(res)
+	}
 }
 ```
 and will get a result string as follow
@@ -138,6 +143,6 @@ let v2 = {"v2a":"a","v2b":13}
 
 As you can see, the code indent is not very well, but it works in k6. 
 
-Attention that **the package will only output string**, if you need to feed the script to a k6 programme, you should write the string into a js file and feed it to k6. This should be easy with go.
+Attention that **the package will output string**, if you need to feed the script to a k6 programme, you should write the string into a js file and feed it to k6. This should be easy with go.
 
-The package now only accepts http request and very simple options. It will be a feature to join more options and requests like ws and so on. **But it should be only used when you need to generate simple script** because generated script will have only one function and is not friendly for human to read.
+The package now only accepts http request and very simple options. It will be a feature to join more options and requests like ws and so on. **But the package should be only used when you need to generate simple script** because generated script will have only one function and is not friendly for human to read.

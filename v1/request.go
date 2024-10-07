@@ -6,7 +6,7 @@ import (
 )
 
 type K6Request interface {
-	genRequestScript(imports map[string]any) string
+	genRequestScript(imports map[string]any) (string, error)
 }
 
 type K6HttpRequest struct {
@@ -35,7 +35,7 @@ func (k K6HttpRequest) Type() string {
 	return "http"
 }
 
-func (k K6HttpRequest) genRequestScript(imports map[string]any) string {
+func (k K6HttpRequest) genRequestScript(imports map[string]any) (string, error) {
 	imports["import http from 'k6/http';"] = nil
 	// deal with request
 	requestParams := make([]string, 0)
@@ -49,32 +49,32 @@ func (k K6HttpRequest) genRequestScript(imports map[string]any) string {
 		requestParams = append(requestParams, fmt.Sprintf("\t"+`timeout: "%s"`, k.Param.Timeout))
 	}
 	if len(k.Param.Cookies) != 0 {
-		// cookieStr := "cookies: {\n"
-		// for key, cookie := range k.Param.Cookies {
-		// 	cookieStr += fmt.Sprintf("%s: {value: %s, replace: %v}, \n", key, cookie.Value, cookie.Replace)
-		// }
-		// cookieStr += "}"
-		cookie, _ := json.Marshal(k.Param.Cookies)
+		cookie, err := json.Marshal(k.Param.Cookies)
+		if err != nil {
+			return "", fmt.Errorf(
+				"error in generating request cookies, request name = %s, err = %s",
+				k.Name, err.Error())
+		}
 		cookieStr := fmt.Sprintf("\t"+"cookies: %s", cookie)
 		requestParams = append(requestParams, cookieStr)
 	}
 	if len(k.Param.Headers) != 0 {
-		// headerStr := "headers: {\n"
-		// for key, v := range k.Param.Headers {
-		// 	headerStr += fmt.Sprintf("%s: %s,\n", key, v)
-		// }
-		// headerStr += "}"
-		headers, _ := json.Marshal(k.Param.Headers)
+		headers, err := json.Marshal(k.Param.Headers)
+		if err != nil {
+			return "", fmt.Errorf(
+				"error in generating request headers, request name = %s, err = %s",
+				k.Name, err.Error())
+		}
 		headerStr := fmt.Sprintf("\t"+"headers: %s", headers)
 		requestParams = append(requestParams, headerStr)
 	}
 	if len(k.Param.Tags) != 0 {
-		// tagStr := "tags: {\n"
-		// for key, v := range k.Param.Tags {
-		// 	tagStr += fmt.Sprintf("%s: %s,\n", key, v)
-		// }
-		// tagStr += "}"
-		tags, _ := json.Marshal(k.Param.Tags)
+		tags, err := json.Marshal(k.Param.Tags)
+		if err != nil {
+			return "", fmt.Errorf(
+				"error in generating request tags, request name = %s, err = %s",
+				k.Name, err.Error())
+		}
 		tagStr := fmt.Sprintf("\t"+"tags: %s", tags)
 		requestParams = append(requestParams, tagStr)
 	}
@@ -103,5 +103,5 @@ func (k K6HttpRequest) genRequestScript(imports map[string]any) string {
 	// generate res
 	res := fmt.Sprintf("let %s = http.request(\"%s\", \"%s\", %s, %s);\n%s;",
 		k.Name, k.Method, k.Url, body, param, checks)
-	return res
+	return res, nil
 }

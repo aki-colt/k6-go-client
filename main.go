@@ -76,5 +76,10 @@ func main() {
 			},
 		},
 	}
-	log.Print(client.GenScript())
+	res, err := client.GenScript()
+	if err != nil {
+		log.Fatal(err.Error())
+	} else {
+		log.Print(res)
+	}
 }

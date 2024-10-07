@@ -7,7 +7,7 @@ import (
 
 type K6Block interface {
 	// genBlockScript generate the js script for the block, imports is a set contained what package is imported by all blocks
-	genBlockScript(imports map[string]any) string
+	genBlockScript(imports map[string]any) (string, error)
 }
 
 // K6RawCodeBlock is a block only with raw js code
@@ -15,8 +15,8 @@ type K6RawCodeBlock struct {
 	Code string
 }
 
-func (b K6RawCodeBlock) genBlockScript(imports map[string]any) string {
-	return b.Code
+func (b K6RawCodeBlock) genBlockScript(imports map[string]any) (string, error) {
+	return b.Code, nil
 }
 
 // normal code block contains constants and variable declares, request declares and inner blocks
@@ -44,34 +44,52 @@ type K6NormalBlock struct {
 	Blocks []K6Block
 }
 
-func (b K6NormalBlock) genBlockScript(imports map[string]any) string {
+func (b K6NormalBlock) genBlockScript(imports map[string]any) (string, error) {
 	res := ""
 	if len(b.Constants) != 0 {
 		for k, v := range b.Constants {
-			vStr, _ := json.Marshal(&v)
+			vStr, err := json.Marshal(&v)
+			if err != nil {
+				return "", fmt.Errorf(
+					"error in generating constant, constant key = %s, err = %s",
+					k, err.Error())
+			}
 			res += fmt.Sprintf("const %s = %s\n", k, vStr)
 		}
 		res += "\n"
 	}
 	if len(b.Variables) != 0 {
 		for k, v := range b.Variables {
-			vStr, _ := json.Marshal(&v)
+			vStr, err := json.Marshal(&v)
+			if err != nil {
+				return "", fmt.Errorf(
+					"error in generating variable, variable key = %s, err = %s",
+					k, err.Error())
+			}
 			res += fmt.Sprintf("let %s = %s\n", k, vStr)
 		}
 		res += "\n"
 	}
 	if len(b.Requests) != 0 {
 		for _, req := range b.Requests {
-			res += req.genRequestScript(imports) + "\n"
+			reqCode, err := req.genRequestScript(imports)
+			if err != nil {
+				return "", err
+			}
+			res += reqCode + "\n"
 		}
 		res += "\n"
 	}
 	if len(b.Blocks) != 0 {
 		for _, block := range b.Blocks {
-			res += block.genBlockScript(imports) + "\n\n"
+			blockCode, err := block.genBlockScript(imports)
+			if err != nil {
+				return "", err
+			}
+			res += blockCode + "\n\n"
 		}
 	}
-	return res
+	return res, nil
 }
 
 type K6IfBlock struct {
@@ -85,9 +103,17 @@ type K6IfBlock struct {
 	ElseBlock K6NormalBlock
 }
 
-func (b K6IfBlock) genBlockScript(imports map[string]any) string {
+func (b K6IfBlock) genBlockScript(imports map[string]any) (string, error) {
+	ifCode, err := b.IfBlock.genBlockScript(imports)
+	if err != nil {
+		return "", err
+	}
+	elseCode, err := b.ElseBlock.genBlockScript(imports)
+	if err != nil {
+		return "", err
+	}
 	return fmt.Sprintf("if (%s) {\n%s\n} else {\n%s\n}",
-		b.Condition, b.IfBlock.genBlockScript(imports), b.ElseBlock.genBlockScript(imports))
+		b.Condition, ifCode, elseCode), nil
 }
 
 type K6ForBlock struct {
@@ -98,6 +124,10 @@ type K6ForBlock struct {
 	Block     K6NormalBlock
 }
 
-func (b K6ForBlock) genBlockScript(imports map[string]any) string {
-	return fmt.Sprintf("for (%s) {\n%s\n}", b.Condition, b.Block.genBlockScript(imports))
+func (b K6ForBlock) genBlockScript(imports map[string]any) (string, error) {
+	blockCode, err := b.Block.genBlockScript(imports)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("for (%s) {\n%s\n}", b.Condition, blockCode), err
 }

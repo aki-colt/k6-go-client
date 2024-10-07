@@ -79,5 +79,10 @@ func TestClient(t *testing.T) {
 		Imports: []string{},
 		Block:   b,
 	}
-	t.Log(client.GenScript())
+	res, err := client.GenScript()
+	if err != nil {
+		t.Fatalf(err.Error())
+	} else {
+		t.Log(res)
+	}
 }

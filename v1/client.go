@@ -6,9 +6,12 @@ type K6Client struct {
 	Imports []string
 }
 
-func (c K6Client) GenScript() string {
+func (c K6Client) GenScript() (string, error) {
 	imports := make(map[string]any)
-	block := c.Block.genBlockScript(imports)
+	block, err := c.Block.genBlockScript(imports)
+	if err != nil {
+		return "", err
+	}
 	for k := range imports {
 		c.Imports = append(c.Imports, k)
 	}
@@ -20,5 +23,5 @@ func (c K6Client) GenScript() string {
 	res += c.Options.genOptionScript() + "\n"
 	res += "\n"
 	res += "export default function() {\n" + block + "}"
-	return res
+	return res, nil
 }
